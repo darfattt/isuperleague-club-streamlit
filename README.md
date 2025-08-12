@@ -46,6 +46,7 @@ pip install -r requirements.txt
 
 ## Usage
 
+### Local Development
 1. **Run the dashboard**:
 ```bash
 streamlit run app.py
@@ -55,6 +56,17 @@ streamlit run app.py
    - Use the sidebar to switch between different analysis pages
    - Interactive controls allow customization of visualizations
    - Data is automatically cached for better performance
+
+### Deployment to Streamlit Cloud
+For production deployment, see the detailed [Deployment Guide](DEPLOYMENT.md).
+
+**Quick Deployment Steps:**
+1. Push your code to a public GitHub repository
+2. Sign up at [share.streamlit.io](https://share.streamlit.io)
+3. Connect your GitHub account
+4. Deploy by selecting your repository and setting main file to `app.py`
+
+Your app will be available at: `https://your-app-name.streamlit.app`
 
 ## Data Format
 
@@ -86,6 +98,11 @@ isuperleague-club-streamlit/
 ├── data/
 │   └── football_stats.csv # Football statistics data
 ├── requirements.txt       # Python dependencies
+├── .streamlit/
+│   └── config.toml        # Streamlit configuration
+├── packages.txt           # System dependencies (if needed)
+├── .gitignore            # Git ignore rules
+├── DEPLOYMENT.md         # Detailed deployment guide
 └── README.md             # This file
 ```
 
