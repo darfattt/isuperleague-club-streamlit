@@ -53,10 +53,9 @@ def load_data():
 
 # Define metric categories
 METRIC_CATEGORIES = {
-    'Attack': ['Akurasi Tembakan', 'Tembakan ke Gawang', 'Total Tembakan', 'Tembakan Diblok', 'Tendangan Sudut'],
-    'Defense': ['Tekel Sukses', 'Pelanggaran'],
-    'Progression': ['Akurasi Umpan', 'Umpan Sukses', 'Umpan Gagal', 'Total Umpan', 'Penguasaan Bola'],
-    'General': ['Offside', 'Kartu Kuning', 'Kartu Merah']
+    'Attack': ['Akurasi Tembakan', 'Tembakan ke Gawang', 'Total Tembakan', 'Tembakan Diblok', 'Tendangan Sudut', 'Offside'],
+    'Defense': ['Tekel Sukses', 'Pelanggaran', 'Kartu Kuning', 'Kartu Merah'],
+    'Progression': ['Akurasi Umpan', 'Umpan Sukses', 'Umpan Gagal', 'Total Umpan', 'Penguasaan Bola']
 }
 
 # Define negative metrics (lower values are better)
@@ -82,12 +81,6 @@ NEGATIVE_METRIC_WEIGHTS = {
     'Umpan Gagal': 1.2     # Moderate impact - loss of possession
 }
 
-# Legacy weights for backward compatibility (General category only)
-GENERAL_WEIGHTS = {
-    'Kartu Merah': 5,    # Most severe - player ejection
-    'Kartu Kuning': 2,   # Moderate - caution/warning  
-    'Offside': 1         # Least severe - tactical violation
-}
 
 # Main navigation
 def main():
@@ -135,7 +128,7 @@ def show_top_stats_overview(df):
     # Performers by category
     st.subheader("📊 Performance by Category")
     
-    tab1, tab2, tab3, tab4, tab5 = st.tabs(["🏅 Overall", "⚔️ Attack", "🛡️ Defense", "📈 Progression", "⚽ General"])
+    tab1, tab2, tab3, tab4 = st.tabs(["🏅 Overall", "⚔️ Attack", "🛡️ Defense", "📈 Progression"])
     
     with tab1:
         show_overall_performance(df)
@@ -149,9 +142,6 @@ def show_top_stats_overview(df):
     with tab4:
         show_category_all_performers(df, "Progression", METRIC_CATEGORIES['Progression'])
     
-    with tab5:
-        show_category_all_performers(df, "General", METRIC_CATEGORIES['General'])
-    
     # Overall performance heatmap
     st.subheader("🔥 Performance Heatmap")
     show_performance_heatmap(df)
@@ -160,88 +150,37 @@ def show_category_all_performers(df, category_name, metrics):
     """Show all performers for a specific category with integrated progress bars"""
     st.write(f"**All Teams - {category_name} Performance**")
     
-    # Special handling for General category with weighted scores
-    if category_name == "General":
-        # Calculate weighted scores
-        performance_scores, penalty_scores = calculate_weighted_general_score(df)
-        category_avg = pd.Series(performance_scores, index=df.index)
-        
-        # Create rankings dataframe with additional penalty information
-        rankings_df = df[['TEAM'] + metrics].copy()
-        rankings_df[f'{category_name}_Performance'] = performance_scores
-        rankings_df['Weighted_Penalty'] = penalty_scores
-        rankings_df = rankings_df.sort_values(f'{category_name}_Performance', ascending=False).reset_index(drop=True)
-        rankings_df.index = rankings_df.index + 1  # Start ranking from 1
-        
-        # Add percentage column (normalize to 0-1 for progress column)
-        max_score = max(performance_scores)
-        rankings_df['Performance_%'] = [(score / max_score) for score in rankings_df[f'{category_name}_Performance']]
-        
-        # Add explanation for General category
-        st.info("💡 **General Category Weighting**: Red Cards (×5) > Yellow Cards (×2) > Offside (×1). " +
-               "Lower penalty scores indicate better discipline. Performance score is inverted for ranking.")
-        
-        # Display table with weighted penalty information
-        st.dataframe(
-            rankings_df,
-            column_config={
-                "Performance_%": st.column_config.ProgressColumn(
-                    "Performance %",
-                    help="Performance percentage based on weighted discipline score",
-                    min_value=0,
-                    max_value=1,
-                ),
-                f'{category_name}_Performance': st.column_config.NumberColumn(
-                    "Performance Score",
-                    help="Weighted performance score (higher is better)",
-                    format="%.2f"
-                ),
-                'Weighted_Penalty': st.column_config.NumberColumn(
-                    "Penalty Score",
-                    help="Weighted penalty score (lower is better)",
-                    format="%.1f"
-                )
-            },
-            hide_index=False,
-            use_container_width=True
-        )
-        
-        chart_y_column = f'{category_name}_Performance'
-        chart_title = f"All Teams - {category_name} Weighted Performance"
-        chart_y_label = "Weighted Performance Score"
-        
-    else:
-        # Regular category calculation
-        category_avg = calculate_category_average(df, metrics, category_name)
-        
-        # Create rankings dataframe
-        rankings_df = df[['TEAM'] + metrics].copy()
-        rankings_df[f'{category_name}_Average'] = category_avg
-        rankings_df = rankings_df.sort_values(f'{category_name}_Average', ascending=False).reset_index(drop=True)
-        rankings_df.index = rankings_df.index + 1  # Start ranking from 1
-        
-        # Add percentage column (normalize to 0-1 for progress column)
-        max_score = category_avg.max()
-        rankings_df['Performance_%'] = (rankings_df[f'{category_name}_Average'] / max_score).round(3)
-        
-        # Display table with integrated progress column
-        st.dataframe(
-            rankings_df,
-            column_config={
-                "Performance_%": st.column_config.ProgressColumn(
-                    "Performance %",
-                    help=f"Performance percentage relative to top {category_name} team",
-                    min_value=0,
-                    max_value=1,
-                ),
-            },
-            hide_index=False,
-            use_container_width=True
-        )
-        
-        chart_y_column = f'{category_name}_Average'
-        chart_title = f"All Teams - {category_name} Performance"
-        chart_y_label = f"Average {category_name} Score"
+    # Regular category calculation
+    category_avg = calculate_category_average(df, metrics, category_name)
+    
+    # Create rankings dataframe
+    rankings_df = df[['TEAM'] + metrics].copy()
+    rankings_df[f'{category_name}_Average'] = category_avg
+    rankings_df = rankings_df.sort_values(f'{category_name}_Average', ascending=False).reset_index(drop=True)
+    rankings_df.index = rankings_df.index + 1  # Start ranking from 1
+    
+    # Add percentage column (normalize to 0-1 for progress column)
+    max_score = category_avg.max()
+    rankings_df['Performance_%'] = (rankings_df[f'{category_name}_Average'] / max_score).round(3)
+    
+    # Display table with integrated progress column
+    st.dataframe(
+        rankings_df,
+        column_config={
+            "Performance_%": st.column_config.ProgressColumn(
+                "Performance %",
+                help=f"Performance percentage relative to top {category_name} team",
+                min_value=0,
+                max_value=1,
+            ),
+        },
+        hide_index=False,
+        use_container_width=True
+    )
+    
+    chart_y_column = f'{category_name}_Average'
+    chart_title = f"All Teams - {category_name} Performance"
+    chart_y_label = f"Average {category_name} Score"
     
     st.markdown("---")
     
@@ -325,34 +264,10 @@ def show_performance_heatmap(df):
     
     st.plotly_chart(fig, use_container_width=True, key="performance_heatmap")
 
-def calculate_weighted_general_score(df):
-    """Calculate weighted General category scores (lower penalty = better performance)"""
-    weighted_performance_scores = []
-    
-    for _, row in df.iterrows():
-        # Calculate total weighted penalty score
-        penalty_score = (
-            row['Kartu Merah'] * GENERAL_WEIGHTS['Kartu Merah'] +
-            row['Kartu Kuning'] * GENERAL_WEIGHTS['Kartu Kuning'] + 
-            row['Offside'] * GENERAL_WEIGHTS['Offside']
-        )
-        weighted_performance_scores.append(penalty_score)
-    
-    # Convert to performance score (invert so lower penalty = higher performance)
-    max_penalty = max(weighted_performance_scores) if weighted_performance_scores else 0
-    
-    # Add small buffer to avoid zero scores
-    performance_scores = [(max_penalty + 1 - penalty) for penalty in weighted_performance_scores]
-    
-    return performance_scores, weighted_performance_scores
 
 def calculate_category_average(df, metrics, category_name=None):
-    """Calculate category average with special handling for General category"""
-    if category_name == "General":
-        performance_scores, _ = calculate_weighted_general_score(df)
-        return pd.Series(performance_scores, index=df.index)
-    else:
-        return df[metrics].mean(axis=1)
+    """Calculate category average"""
+    return df[metrics].mean(axis=1)
 
 def show_overall_performance(df):
     """Show overall performance combining all metrics with full data"""
@@ -623,10 +538,9 @@ def create_team_performance_chart(selected_teams_df, full_dataset_df, team_data)
     
     # Create a dictionary to store ALL 15 metrics from CSV in logical categories
     metric_order = {
-        'General': ['Offside', 'Kartu Kuning', 'Kartu Merah'],
-        'Defense': ['Tekel Sukses', 'Pelanggaran'],
-        'Progression': ['Akurasi Umpan', 'Umpan Sukses', 'Umpan Gagal', 'Total Umpan', 'Penguasaan Bola'],
-        'Attack': ['Akurasi Tembakan', 'Tembakan ke Gawang', 'Total Tembakan', 'Tembakan Diblok', 'Tendangan Sudut'],
+        'Attack': ['Akurasi Tembakan', 'Tembakan ke Gawang', 'Total Tembakan', 'Tembakan Diblok', 'Tendangan Sudut', 'Offside'],
+        'Defense': ['Tekel Sukses', 'Pelanggaran', 'Kartu Kuning', 'Kartu Merah'],
+        'Progression': ['Akurasi Umpan', 'Umpan Sukses', 'Umpan Gagal', 'Total Umpan', 'Penguasaan Bola']
     }
     
     # Get all numeric columns from the dataset to ensure we don't miss any
@@ -661,7 +575,7 @@ def create_team_performance_chart(selected_teams_df, full_dataset_df, team_data)
     
     # Prepare data for the chart
     chart_data = []
-    category_order = {'General': 0, 'Defense': 1, 'Progression': 2, 'Attack': 3, 'Other': 4}
+    category_order = {'Attack': 0, 'Defense': 1, 'Progression': 2, 'Other': 3}
     
     # Use all_numeric_cols we already calculated above
     
@@ -740,7 +654,7 @@ def create_team_performance_chart(selected_teams_df, full_dataset_df, team_data)
     fig = go.Figure()
     
     # Add bars for each category, showing ALL metrics (including zero values)
-    for category in ['General', 'Defense', 'Progression', 'Attack', 'Other']:
+    for category in ['Attack', 'Defense', 'Progression', 'Other']:
         category_df = df_chart[df_chart['Category'] == category]
         if not category_df.empty:
             # Show ALL metrics, including those with zero values
@@ -779,7 +693,7 @@ def create_team_performance_chart(selected_teams_df, full_dataset_df, team_data)
         prev_category = row['Category']
     
     # Add category annotations
-    for category in ['General', 'Defense', 'Progression', 'Attack', 'Other']:
+    for category in ['Attack', 'Defense', 'Progression', 'Other']:
         category_df = df_chart[df_chart['Category'] == category]
         if not category_df.empty:
             # Find middle position for category label
@@ -983,7 +897,7 @@ def show_category_analysis(df):
     """Display category-specific analysis"""
     st.header("📈 Category Analysis")
     
-    tab1, tab2, tab3, tab4, tab5 = st.tabs(["🏅 Overall", "⚔️ Attack", "🛡️ Defense", "📈 Progression", "⚽ General"])
+    tab1, tab2, tab3, tab4 = st.tabs(["🏅 Overall", "⚔️ Attack", "🛡️ Defense", "📈 Progression"])
     
     with tab1:
         show_detailed_overall_analysis(df)
@@ -996,9 +910,6 @@ def show_category_analysis(df):
     
     with tab4:
         show_detailed_category_analysis(df, "Progression", METRIC_CATEGORIES['Progression'])
-    
-    with tab5:
-        show_detailed_category_analysis(df, "General", METRIC_CATEGORIES['General'])
 
 def show_detailed_overall_analysis(df):
     """Show detailed overall analysis combining all metrics"""
@@ -1127,97 +1038,31 @@ def show_detailed_category_analysis(df, category_name, metrics):
     """Show detailed analysis for a specific category"""
     st.subheader(f"🔍 {category_name} Analysis")
     
-    # Special handling for General category with weighted scores
-    if category_name == "General":
-        # Calculate weighted scores
-        performance_scores, penalty_scores = calculate_weighted_general_score(df)
-        category_scores = pd.Series(performance_scores, index=df.index)
-        
-        # Create enhanced dataframe with penalty information
-        df_with_scores = df.copy()
-        df_with_scores[f'{category_name}_Performance'] = performance_scores
-        df_with_scores['Weighted_Penalty'] = penalty_scores
-        df_with_scores[f'{category_name}_Score'] = performance_scores  # For consistency
-        
-        # Add explanation for General category weighting
-        st.info("💡 **General Category Weighting System**: Red Cards (×5) > Yellow Cards (×2) > Offside (×1). " +
-               "This weighting reflects the real impact of discipline issues in football. " +
-               "Performance Score = Inverted Penalty Score (higher is better).")
-        
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            # Enhanced rankings with penalty information
-            st.write("**🏆 Weighted Performance Rankings**")
-            rankings = df_with_scores[['TEAM', f'{category_name}_Performance', 'Weighted_Penalty']].sort_values(f'{category_name}_Performance', ascending=False)
-            rankings.index = range(1, len(rankings) + 1)
-            
-            # Add percentage for progress column
-            max_performance = rankings[f'{category_name}_Performance'].max()
-            rankings['Performance_%'] = rankings[f'{category_name}_Performance'] / max_performance
-            
-            st.dataframe(
-                rankings,
-                column_config={
-                    "Performance_%": st.column_config.ProgressColumn(
-                        "Performance %",
-                        help="Weighted performance percentage (higher is better)",
-                        min_value=0,
-                        max_value=1,
-                    ),
-                    f'{category_name}_Performance': st.column_config.NumberColumn(
-                        "Performance Score",
-                        help="Weighted performance score (higher is better)",
-                        format="%.2f"
-                    ),
-                    'Weighted_Penalty': st.column_config.NumberColumn(
-                        "Penalty Score", 
-                        help="Weighted penalty score (lower is better)",
-                        format="%.1f"
-                    )
-                },
-                use_container_width=True
-            )
-        
-        with col2:
-            # Distribution histogram using performance scores
-            fig = px.histogram(
-                df_with_scores,
-                x=f'{category_name}_Performance',
-                title=f"{category_name} Weighted Performance Distribution",
-                nbins=10,
-                color_discrete_sequence=['#FF6B35']
-            )
-            fig.update_layout(height=400)
-            fig.update_xaxes(title="Weighted Performance Score")
-            st.plotly_chart(fig, use_container_width=True, key=f"{category_name.lower()}_distribution_histogram")
-        
-    else:
-        # Regular category analysis
-        category_scores = calculate_category_average(df, metrics, category_name)
-        df_with_scores = df.copy()
-        df_with_scores[f'{category_name}_Score'] = category_scores
-        
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            # Rankings
-            st.write("**🏆 Category Rankings**")
-            rankings = df_with_scores[['TEAM', f'{category_name}_Score']].sort_values(f'{category_name}_Score', ascending=False)
-            rankings.index = range(1, len(rankings) + 1)
-            st.dataframe(rankings, use_container_width=True)
-        
-        with col2:
-            # Distribution histogram
-            fig = px.histogram(
-                df_with_scores,
-                x=f'{category_name}_Score',
-                title=f"{category_name} Score Distribution",
-                nbins=10,
-                color_discrete_sequence=['#FF6B35']
-            )
-            fig.update_layout(height=400)
-            st.plotly_chart(fig, use_container_width=True, key=f"{category_name.lower()}_distribution_histogram")
+    # Regular category analysis
+    category_scores = calculate_category_average(df, metrics, category_name)
+    df_with_scores = df.copy()
+    df_with_scores[f'{category_name}_Score'] = category_scores
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        # Rankings
+        st.write("**🏆 Category Rankings**")
+        rankings = df_with_scores[['TEAM', f'{category_name}_Score']].sort_values(f'{category_name}_Score', ascending=False)
+        rankings.index = range(1, len(rankings) + 1)
+        st.dataframe(rankings, use_container_width=True)
+    
+    with col2:
+        # Distribution histogram
+        fig = px.histogram(
+            df_with_scores,
+            x=f'{category_name}_Score',
+            title=f"{category_name} Score Distribution",
+            nbins=10,
+            color_discrete_sequence=['#FF6B35']
+        )
+        fig.update_layout(height=400)
+        st.plotly_chart(fig, use_container_width=True, key=f"{category_name.lower()}_distribution_histogram")
     
     # Individual metrics analysis
     st.write(f"**📊 {category_name} Metrics Breakdown**")
